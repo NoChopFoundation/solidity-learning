@@ -216,55 +216,6 @@ contract('LiarsPokerRegistry', function(accounts) {
 		await spinWait('staticTests', 30*1000);
 		var meta = await LiarsPokerRegistry.deployed();
 		
-//		//console.log(RockPaperScissorsGame);
-//		var gameAddr = await launchGame(meta, accounts[PLAYER1], accounts[PLAYER2], "mygame", 50);
-//
-//		//console.log("->" + gameAddr + "," + accounts[PLAYER1] + "," + accounts[PLAYER2]);
-//		
-//		var metaGame = await RockPaperScissorsGame.at(gameAddr);
-//		
-//		//console.log(xx);
-//		//console.log(solidityHexToStr(
-//		//		(await metaGame.channelName.call())
-//		//		));
-////		console.log((
-////				(await metaGame.players.call(1))
-////				));
-////		console.log((
-////				(await metaGame.players.call(0))
-////				));
-//		await assertPlayer(metaGame, accounts[PLAYER1], false, false, "initial player");
-//		await assertPlayer(metaGame, accounts[PLAYER2], false, false, "initial player");
-//		
-//		
-//		//var data = "A";
-//		//console.log("0xF1" + data.charCodeAt(0).toString(16)); 
-//		// ["0x00","0xaa", "0xff"] i
-//		 
-//		var salt1 = hexInput("FGRTJKYUVB56DFSDSD");
-//		var salt2 = hexInput("FGRTgh5656dfB56DFSDSD");
-//		var hand1 = hexInput("RRPPS");
-//		var hand2 = hexInput("SSRRS");
-//		var bid1 = await metaGame.createBidUtility.call(hand1, salt1);
-//		var bid2 = await metaGame.createBidUtility.call(hand2, salt2);
-//		
-//		await metaGame.submitHashedHand(bid1, {from: accounts[PLAYER1]});
-//		await metaGame.submitHashedHand(bid2, {from: accounts[PLAYER2]});
-//		
-//		assert.equal(bid1, await metaGame.getMyHashedHand.call({from: accounts[PLAYER1]}), "bid1 computed");
-//		assert.equal(bid2, await metaGame.getMyHashedHand.call({from: accounts[PLAYER2]}), "bid2 computed");
-//
-//		await assertPlayer(metaGame, accounts[PLAYER1], true, false, "initial player");
-//		await assertPlayer(metaGame, accounts[PLAYER2], true, false, "initial player");
-//		
-//		var final1 =  await metaGame.revealHand(hand1, salt1,  {from: accounts[PLAYER1]})
-//		var final2 =  await metaGame.revealHand(hand2, salt2,  {from: accounts[PLAYER2]})
-//		
-//		assert.equal(final1.logs.length, 0, "no events expected");
-//		assert.equal(final2.logs.length, 1, "1 event expected");
-//		
-//		
-//		assertGameCompletedNormal(final2.logs[0].args, accounts[PLAYER1], 100, hand1, accounts[PLAYER2], 0, hand2, "end to end" );
 		
 		await assertGameExecution(meta, "rich", 300, "game variation 1",
 				accounts[PLAYER1], "RRRRR", 0, accounts[PLAYER2], "PPPPP", 600);
@@ -318,12 +269,16 @@ async function assertGameExecution(
 		player1Addr, player1Hand, player1ExpectedResult,
 		player2Addr, player2Hand, player2ExpectedResult
 	) {
+	
+	console.log(registryMeta);
+	
 	var gameAddr = await launchGame(registryMeta, player1Addr, player2Addr, gameName, gameAmt);	
 	var metaGame = await RockPaperScissorsGame.at(gameAddr);
 	
 	await assertPlayer(metaGame, player1Addr, false, false, msgIfErr + " initial player");
 	await assertPlayer(metaGame, player2Addr, false, false, msgIfErr + " initial player");
 	
+	assert.equal((await metaGame.getGameBalance.call({from: player1Addr})).toNumber(), gameAmt*2, "properly funded");
 	
 	var salt1 = hexInput(random32());
 	var salt2 = hexInput(random32());
@@ -351,6 +306,27 @@ async function assertGameExecution(
 			player1Addr, player1ExpectedResult, hand1, 
 			player2Addr, player2ExpectedResult, hand2, 
 			msgIfErr + " end to end" );
+	
+	if (player1ExpectedResult > 0) {
+		var startingBalance = (await web3.eth.getBalance(player1Addr)).toNumber();
+		var tx = await metaGame.withdraw({from: player1Addr});
+		var endingBalance = (await web3.eth.getBalance(player1Addr)).toNumber();
+		
+		//console.log("player1ExpectedResult = "+player1ExpectedResult + "," + (endingBalance - startingBalance) );
+		//console.log(tx);
+		//console.log("blockNumber=" + web3.eth.blockNumber);
+	}
+	if (player2ExpectedResult > 0) {
+		var startingBalance = (await web3.eth.getBalance(player2Addr)).toNumber();
+		var tx = await metaGame.withdraw({from: player2Addr});
+		var endingBalance = (await web3.eth.getBalance(player2Addr)).toNumber();
+	}
+	
+	
+	assert.equal((await metaGame.getGameBalance.call({from: player1Addr})).toNumber(), 0, "drain funds");
+	
+	
+	
 }
 
 function random32() {

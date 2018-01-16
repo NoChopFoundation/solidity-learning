@@ -252,6 +252,10 @@ contract RockPaperScissorsGame {
         _;
     }
     
+    function getGameBalance() onlyByPlayers public view returns (uint) {
+        return this.balance;
+    }
+    
     function withdrawlDueToTimeout() 
         onlyAfter(gameTimeout) 
         onlyByPlayers
